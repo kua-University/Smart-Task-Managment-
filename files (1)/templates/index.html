@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Smart Task Management System</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+
+<!-- Header -->
+<header>
+  <div class="header-left">
+    <div class="header-logo">✓</div>
+    <div>
+      <h1>Smart Task Management System</h1>
+      <div class="subtitle">Layered architecture · CRUD · State machine · ASR-compliant</div>
+    </div>
+  </div>
+  <button class="btn btn-primary" onclick="openModal()">+ New Task</button>
+</header>
+
+<div class="layout">
+
+  <!-- Sidebar -->
+  <aside>
+    <div class="sidebar-section">
+      <div class="sidebar-label">Filter by Status</div>
+      <div class="nav-item active" data-filter="status" data-value="" onclick="setFilter(this)">
+        🗂 All Tasks <span class="badge" id="cnt-all">0</span>
+      </div>
+      <div class="nav-item" data-filter="status" data-value="Pending" onclick="setFilter(this)">
+        ⏳ Pending <span class="badge" id="cnt-Pending">0</span>
+      </div>
+      <div class="nav-item" data-filter="status" data-value="In Progress" onclick="setFilter(this)">
+        🔄 In Progress <span class="badge" id="cnt-InProgress">0</span>
+      </div>
+      <div class="nav-item" data-filter="status" data-value="Completed" onclick="setFilter(this)">
+        ✅ Completed <span class="badge" id="cnt-Completed">0</span>
+      </div>
+      <div class="nav-item" data-filter="status" data-value="Cancelled" onclick="setFilter(this)">
+        ❌ Cancelled <span class="badge" id="cnt-Cancelled">0</span>
+      </div>
+    </div>
+    <div class="sidebar-section">
+      <div class="sidebar-label">Priority</div>
+      <div class="nav-item" data-filter="priority" data-value="High" onclick="setFilter(this)">
+        🔴 High
+      </div>
+      <div class="nav-item" data-filter="priority" data-value="Medium" onclick="setFilter(this)">
+        🟡 Medium
+      </div>
+      <div class="nav-item" data-filter="priority" data-value="Low" onclick="setFilter(this)">
+        🟢 Low
+      </div>
+    </div>
+    <div class="sidebar-section">
+      <div class="sidebar-label">Categories</div>
+      <div id="cat-list"></div>
+    </div>
+  </aside>
+
+  <!-- Main content -->
+  <main>
+    <!-- Stats -->
+    <div class="stats-bar">
+      <div class="stat-card purple">
+        <div class="stat-num" id="stat-total">0</div>
+        <div class="stat-label">Total Tasks</div>
+      </div>
+      <div class="stat-card amber">
+        <div class="stat-num" id="stat-pending">0</div>
+        <div class="stat-label">Pending</div>
+      </div>
+      <div class="stat-card teal">
+        <div class="stat-num" id="stat-inprogress">0</div>
+        <div class="stat-label">In Progress</div>
+      </div>
+      <div class="stat-card coral">
+        <div class="stat-num" id="stat-completed">0</div>
+        <div class="stat-label">Completed</div>
+      </div>
+    </div>
+
+    <!-- Toolbar -->
+    <div class="toolbar">
+      <input type="text" id="search-input" placeholder="🔍  Search tasks..." oninput="loadTasks()">
+      <select id="filter-priority" onchange="loadTasks()">
+        <option value="">All Priorities</option>
+        <option>High</option><option>Medium</option><option>Low</option>
+      </select>
+      <select id="filter-category" onchange="loadTasks()">
+        <option value="">All Categories</option>
+      </select>
+      <button class="btn btn-ghost btn-sm" onclick="resetFilters()">Clear filters</button>
+    </div>
+
+    <!-- Task table -->
+    <div class="task-table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Task</th>
+            <th>Status</th>
+            <th>Priority</th>
+            <th>Category</th>
+            <th>Created</th>
+            <th>Updated</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="task-tbody">
+          <tr><td colspan="7" class="empty-state">Loading…</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </main>
+</div>
+
+<!-- Create / Edit Modal -->
+<div class="overlay" id="modal-overlay" onclick="closeModal(event)">
+  <div class="modal" onclick="event.stopPropagation()">
+    <div class="modal-header">
+      <h2 id="modal-title">New Task</h2>
+      <button class="modal-close" onclick="closeModal()">×</button>
+    </div>
+    <div class="modal-body">
+      <div id="modal-error" class="error-msg" style="margin-bottom:10px;display:none;"></div>
+
+      <!-- Status flow (edit mode only) -->
+      <div class="status-flow" id="status-flow-section" style="display:none;">
+        <div class="status-flow-title">Status transition</div>
+        <div class="status-pills" id="status-pills"></div>
+      </div>
+
+      <div class="form-group">
+        <label for="f-title">Title <span style="color:var(--coral)">*</span></label>
+        <input type="text" id="f-title" class="form-control" placeholder="Task title" maxlength="120">
+      </div>
+      <div class="form-group">
+        <label for="f-desc">Description</label>
+        <textarea id="f-desc" class="form-control" placeholder="Optional details…"></textarea>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label for="f-priority">Priority</label>
+          <select id="f-priority" class="form-control">
+            <option>High</option><option selected>Medium</option><option>Low</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="f-category">Category</label>
+          <input type="text" id="f-category" class="form-control" placeholder="e.g. Frontend">
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-primary" id="modal-save-btn" onclick="saveTask()">Create Task</button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div id="toast"></div>
+
+<script src="{{ url_for('static', filename='js/app.js') }}"></script>
+</body>
+</html>
